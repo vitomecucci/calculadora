@@ -1,8 +1,8 @@
-const CACHE = 'calc-v1';
+const CACHE = 'calc-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 self.addEventListener('install', e => {
