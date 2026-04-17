@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Calc" />
+  <title>Calculadora</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c27;
+      --border: rgba(255,255,255,0.06);
+      --text: #f0f0f8;
+      --text-dim: #6b6b80;
+      --accent: #7c6af7;
+      --accent2: #a78bfa;
+      --op: #2a2a3a;
+      --op-text: #a78bfa;
+      --eq: #7c6af7;
+      --red: #f06292;
+      --glow: rgba(124,106,247,0.25);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--text);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+    }
+
+    /* Background subtle noise */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: min(380px, 100vw);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      margin-bottom: 4px;
+    }
+    .header .logo {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    .header .install-btn {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--accent2);
+      background: rgba(124,106,247,0.12);
+      border: 1px solid rgba(124,106,247,0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+      cursor: pointer;
+      display: none;
+      transition: all 0.2s;
+    }
+    .header .install-btn:hover { background: rgba(124,106,247,0.22); }
+    .header .install-btn.visible { display: block; }
+
+    /* Display */
+    .display {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px 24px 18px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+    .display::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(124,106,247,0.4), transparent);
+    }
+
+    .display .expr {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      color: var(--text-dim);
+      min-height: 20px;
+      word-break: break-all;
+      text-align: right;
+      transition: color 0.2s;
+    }
+    .display .result {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(28px, 8vw, 44px);
+      font-weight: 300;
+      color: var(--text);
+      word-break: break-all;
+      text-align: right;
+      line-height: 1.1;
+      transition: all 0.15s;
+    }
+    .display .result.error { color: var(--red); font-size: 22px; }
+    .display .result.computed { color: var(--accent2); }
+
+    /* Keypad */
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .btn {
+      height: 72px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.1s, box-shadow 0.12s, color 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.15s;
+      border-radius: inherit;
+    }
+    .btn:active::before { opacity: 0.06; }
+    .btn:active { transform: scale(0.94); }
+
+    .btn.op {
+      background: var(--op);
+      color: var(--op-text);
+      font-size: 22px;
+    }
+    .btn.op:hover { background: #333348; }
+
+    .btn.clear {
+      background: rgba(240, 98, 146, 0.12);
+      color: var(--red);
+      border-color: rgba(240,98,146,0.2);
+      font-size: 14px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .btn.clear:hover { background: rgba(240, 98, 146, 0.2); }
+
+    .btn.del {
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 18px;
+    }
+    .btn.del:hover { background: #252535; }
+
+    .btn.pct {
+      background: var(--surface2);
+      color: var(--text-dim);
+    }
+
+    .btn.eq {
+      background: var(--eq);
+      color: #fff;
+      font-size: 24px;
+      box-shadow: 0 4px 24px var(--glow);
+      border-color: transparent;
+    }
+    .btn.eq:hover { background: #9580ff; box-shadow: 0 6px 32px var(--glow); }
+    .btn.eq:active { transform: scale(0.92); }
+
+    .btn.zero { grid-column: span 2; justify-content: flex-start; padding-left: 26px; }
+
+    .btn.num:hover { background: var(--surface2); }
+
+    /* Ripple */
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      width: 20px; height: 20px;
+      background: rgba(255,255,255,0.15);
+      transform: scale(0);
+      animation: ripple 0.5s linear;
+      pointer-events: none;
+    }
+
+    /* Install banner */
+    .install-banner {
+      background: var(--surface);
+      border: 1px solid rgba(124,106,247,0.3);
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .install-banner.visible { display: flex; }
+    .install-banner strong { color: var(--text); }
+    .install-banner .ib-btn {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    @media (max-height: 700px) {
+      .btn { height: 60px; }
+      .app { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <span class="logo">Calc</span>
+    <button class="install-btn" id="installBtn">⬇ Instalar</button>
+  </div>
+
+  <div class="display">
+    <div class="expr" id="expr"></div>
+    <div class="result" id="result">0</div>
+  </div>
+
+  <div class="install-banner" id="installBanner">
+    <span>📲 <strong>Instalá la app</strong> en tu celu</span>
+    <button class="ib-btn" id="installBannerBtn">Instalar</button>
+  </div>
+
+  <div class="keypad">
+    <button class="btn clear" data-action="clear">AC</button>
+    <button class="btn del"   data-action="del">⌫</button>
+    <button class="btn pct op" data-action="pct">%</button>
+    <button class="btn op"   data-val="÷">÷</button>
+
+    <button class="btn num" data-val="7">7</button>
+    <button class="btn num" data-val="8">8</button>
+    <button class="btn num" data-val="9">9</button>
+    <button class="btn op"  data-val="×">×</button>
+
+    <button class="btn num" data-val="4">4</button>
+    <button class="btn num" data-val="5">5</button>
+    <button class="btn num" data-val="6">6</button>
+    <button class="btn op"  data-val="−">−</button>
+
+    <button class="btn num" data-val="1">1</button>
+    <button class="btn num" data-val="2">2</button>
+    <button class="btn num" data-val="3">3</button>
+    <button class="btn op"  data-val="+">+</button>
+
+    <button class="btn num zero" data-val="0">0</button>
+    <button class="btn num" data-val=".">.</button>
+    <button class="btn eq" data-action="eq">=</button>
+  </div>
+</div>
+
+<script>
+  const exprEl   = document.getElementById('expr');
+  const resultEl = document.getElementById('result');
+  let expr = '';
+  let justCalc = false;
+
+  function updateDisplay(res, err) {
+    exprEl.textContent = expr;
+    if (err) {
+      resultEl.textContent = 'Error';
+      resultEl.className = 'result error';
+    } else if (res !== null) {
+      resultEl.textContent = formatNum(res);
+      resultEl.className = 'result computed';
+    } else {
+      // live preview
+      try {
+        const preview = evaluate(expr);
+        if (preview !== null && String(preview) !== expr) {
+          resultEl.textContent = formatNum(preview);
+          resultEl.className = 'result';
+        } else {
+          resultEl.textContent = expr || '0';
+          resultEl.className = 'result';
+        }
+      } catch {
+        resultEl.textContent = expr || '0';
+        resultEl.className = 'result';
+      }
+    }
+  }
+
+  function formatNum(n) {
+    if (typeof n !== 'number') return n;
+    if (!isFinite(n)) return 'Error';
+    // round to 10 decimals to avoid float noise
+    const rounded = parseFloat(n.toPrecision(10));
+    return rounded.toLocaleString('es-AR', { maximumFractionDigits: 8 });
+  }
+
+  function evaluate(e) {
+    if (!e) return null;
+    const safe = e
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/−/g, '-');
+    // block anything not math
+    if (!/^[\d\s\+\-\*\/\.\(\)%]+$/.test(safe)) return null;
+    try {
+      // eslint-disable-next-line no-new-func
+      const r = Function('"use strict"; return (' + safe + ')')();
+      if (typeof r === 'number') return r;
+    } catch { }
+    return null;
+  }
+
+  function isOp(c) { return ['÷','×','−','+'].includes(c); }
+
+  function input(val) {
+    if (justCalc && !isOp(val)) {
+      expr = '';
+      justCalc = false;
+    }
+    if (justCalc && isOp(val)) {
+      justCalc = false;
+      // keep last result, append operator
+    }
+
+    const last = expr.slice(-1);
+
+    // prevent double operators
+    if (isOp(val) && isOp(last)) {
+      expr = expr.slice(0, -1) + val;
+      updateDisplay(null, false);
+      return;
+    }
+    // prevent leading operator except minus
+    if (isOp(val) && expr === '' && val !== '−') return;
+    // prevent double dot
+    if (val === '.') {
+      const parts = expr.split(/[\+\−×÷]/);
+      const current = parts[parts.length - 1];
+      if (current.includes('.')) return;
+    }
+
+    expr += val;
+    updateDisplay(null, false);
+  }
+
+  function calc() {
+    if (!expr) return;
+    const r = evaluate(expr);
+    if (r === null || !isFinite(r)) {
+      updateDisplay(null, true);
+      expr = '';
+    } else {
+      updateDisplay(r, false);
+      expr = String(r).replace('.', ',') // keep as number string
+             .replace(/,/g, '.');        // normalize
+      // Actually store raw number
+      expr = String(parseFloat(r.toPrecision(10)));
+      justCalc = true;
+    }
+  }
+
+  function doPercent() {
+    const r = evaluate(expr);
+    if (r !== null) {
+      expr = String(r / 100);
+      updateDisplay(null, false);
+    }
+  }
+
+  function doDelete() {
+    if (justCalc) { expr = ''; justCalc = false; updateDisplay(null, false); return; }
+    expr = expr.slice(0, -1);
+    updateDisplay(null, false);
+  }
+
+  // Button clicks
+  document.querySelector('.keypad').addEventListener('click', e => {
+    const btn = e.target.closest('.btn');
+    if (!btn) return;
+    addRipple(btn, e);
+    const action = btn.dataset.action;
+    const val    = btn.dataset.val;
+    if (action === 'clear')   { expr = ''; justCalc = false; updateDisplay(null, false); resultEl.textContent = '0'; resultEl.className='result'; }
+    else if (action === 'del')  doDelete();
+    else if (action === 'pct')  doPercent();
+    else if (action === 'eq')   calc();
+    else if (val)               input(val);
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') input(e.key);
+    else if (e.key === '+') input('+');
+    else if (e.key === '-') input('−');
+    else if (e.key === '*') input('×');
+    else if (e.key === '/') { e.preventDefault(); input('÷'); }
+    else if (e.key === '.') input('.');
+    else if (e.key === '%') doPercent();
+    else if (e.key === 'Enter' || e.key === '=') calc();
+    else if (e.key === 'Backspace') doDelete();
+    else if (e.key === 'Escape') { expr=''; justCalc=false; updateDisplay(null,false); resultEl.textContent='0'; resultEl.className='result'; }
+  });
+
+  function addRipple(btn, e) {
+    const r = document.createElement('span');
+    r.className = 'ripple-effect';
+    const rect = btn.getBoundingClientRect();
+    r.style.left = (e.clientX - rect.left - 10) + 'px';
+    r.style.top  = (e.clientY - rect.top  - 10) + 'px';
+    btn.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  }
+
+  // PWA Install
+  let deferredPrompt = null;
+  const installBtn    = document.getElementById('installBtn');
+  const installBanner = document.getElementById('installBanner');
+  const installBannerBtn = document.getElementById('installBannerBtn');
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.add('visible');
+    installBanner.classList.add('visible');
+  });
+
+  async function doInstall() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      installBtn.classList.remove('visible');
+      installBanner.classList.remove('visible');
+    }
+    deferredPrompt = null;
+  }
+
+  installBtn.addEventListener('click', doInstall);
+  installBannerBtn.addEventListener('click', doInstall);
+
+  window.addEventListener('appinstalled', () => {
+    installBtn.classList.remove('visible');
+    installBanner.classList.remove('visible');
+  });
+
+  // Register SW
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
