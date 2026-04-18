@@ -296,7 +296,7 @@
     <button class="btn op"   data-val="÷">÷</button>
 
     <button class="btn num" data-val="7">7</button>
-    <button class="btn num" data-val="8">8</button>
+    <button class="btn num" data-val="8">80</button>
     <button class="btn num" data-val="9">9</button>
     <button class="btn op"  data-val="×">×</button>
 
@@ -505,10 +505,27 @@
     installBanner.classList.remove('visible');
   });
 
-  // Register SW
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+
+          // 🔔 Aviso al usuario
+          if (confirm("Nueva versión disponible. ¿Actualizar?")) {
+            window.location.reload();
+          }
+
+        }
+      });
+    });
+
+  });
+}
+
 </script>
 </body>
 </html>
